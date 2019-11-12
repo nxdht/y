@@ -43,8 +43,6 @@ type WSServer struct {
 	certFile string
 	keyFile  string
 
-	clientPing bool
-
 	idGenerator IDGenerator
 	clientState clientState
 
@@ -69,8 +67,6 @@ type WSServerConfig struct {
 	CaFile   string
 	CertFile string
 	KeyFile  string
-
-	ClientPing bool
 }
 
 type clientChanged struct {
@@ -98,7 +94,6 @@ func NewWSServer(ctx context.Context, config *WSServerConfig) (*WSServer, error)
 		caFile:              config.CaFile,
 		certFile:            config.CertFile,
 		keyFile:             config.KeyFile,
-		clientPing:          config.ClientPing,
 		idGenerator:         NewUint64IDGenerator(),
 		onClientChangedChan: make(chan *clientChanged, defaultOnConnChangedChanSize),
 		hub:                 make(map[uint64]IClient),
@@ -156,7 +151,7 @@ func (ws *WSServer) handleHttpConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := newWSClientServerSide(ws.ctx, ws.idGenerator.Next().(uint64), conn, userId, ws.clientPing, ws.Parser, &ws.clientState)
+	client, err := newWSClientServerSide(ws.ctx, ws.idGenerator.Next().(uint64), conn, userId, ws.Parser, &ws.clientState)
 	if err != nil {
 		Error(err)
 		return
@@ -165,7 +160,7 @@ func (ws *WSServer) handleHttpConnect(w http.ResponseWriter, r *http.Request) {
 	client.State.OnOpen(client)
 }
 
-func (ws *WSServer) Start() {
+func (ws *WSServer) Start(forceNoSSL bool) {
 	go func() {
 		ticker := time.NewTicker(defaultCheckResponseDuration)
 		defer ticker.Stop()
@@ -216,7 +211,7 @@ func (ws *WSServer) Start() {
 		}
 
 		var err error
-		if ws.certFile != "" && ws.keyFile != "" {
+		if !forceNoSSL && ws.certFile != "" && ws.keyFile != "" {
 			if ws.caFile != "" {
 				pool := x509.NewCertPool()
 				caCrt, err := ioutil.ReadFile(ws.caFile)

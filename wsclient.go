@@ -11,6 +11,9 @@ const (
 	writeChanSize = 256
 	readTimeout   = 10 * time.Second
 	writeTimeout  = 10 * time.Second
+
+	tagClient = "C"
+	tagServer = "S"
 )
 
 type WSClient struct {
@@ -28,13 +31,13 @@ type WSClient struct {
 	State  IState
 }
 
-func (c *WSClient) read(clientPing bool, tag string) {
+func (c *WSClient) read(tag string) {
 	defer RecoverError()
 	defer c.Close()
 
-	if clientPing {
+	if tag == tagServer {
 		c.conn.SetPingHandler(func(message string) error {
-			//Debug("got PING")
+			Debugf("%s IClient.read got ping id = %d", tag, c.id)
 
 			c.lastTime = time.Now()
 
@@ -47,6 +50,11 @@ func (c *WSClient) read(clientPing bool, tag string) {
 
 			//Debug("PONG")
 			return err
+		})
+	} else if tag == tagClient {
+		c.conn.SetPongHandler(func(message string) error {
+			Debugf("%s IClient.read got pong id = %d", tag, c.id)
+			return nil
 		})
 	}
 
@@ -142,7 +150,7 @@ func (c *WSClient) LastTime() time.Time {
 	return c.lastTime
 }
 
-func newWSClientServerSide(ctx context.Context, id uint64, conn *websocket.Conn, userId interface{}, clientPing bool, parser IParser, state IState) (client *WSClient, err error) {
+func newWSClientServerSide(ctx context.Context, id uint64, conn *websocket.Conn, userId interface{}, parser IParser, state IState) (client *WSClient, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	client = &WSClient{
 		conn:      conn,
@@ -156,14 +164,15 @@ func newWSClientServerSide(ctx context.Context, id uint64, conn *websocket.Conn,
 		State:     state,
 	}
 
-	go client.read(clientPing, "S")
-	go client.write(ctx, "S")
+	go client.read(tagServer)
+	go client.write(ctx, tagServer)
 
 	return
 }
 
 type WSClientDialer struct {
 	*websocket.Dialer
+	Heartbeat time.Duration
 }
 
 func (d *WSClientDialer) Dial(ctx context.Context, connection string, id uint64) (client *WSClient, err error) {
@@ -183,9 +192,11 @@ func (d *WSClientDialer) Dial(ctx context.Context, connection string, id uint64)
 		cancel:    cancel,
 	}
 
-	go client.read(false, "C")
-	go client.write(ctx, "C")
-	go client.startHeartbeat(ctx, time.Second*30)
+	go client.read(tagClient)
+	go client.write(ctx, tagClient)
+	if d.Heartbeat > 0 {
+		go client.startHeartbeat(ctx, d.Heartbeat)
+	}
 
 	return
 }
