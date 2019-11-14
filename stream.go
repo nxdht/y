@@ -147,6 +147,9 @@ func (h *JsonMsgHandler) HandleNewData(client IClient, data interface{}) error {
 			if f, ok := h.router[s]; ok {
 				jsonMsg.Client = client
 				f(&jsonMsg)
+			} else if f, ok := h.router["_"]; ok {
+				jsonMsg.Client = client
+				f(&jsonMsg)
 			}
 		}
 	} else {
