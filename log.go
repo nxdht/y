@@ -20,9 +20,7 @@ var (
 
 func InitLog(fileName string) error {
 	if fileName == "" {
-		logger = seelog.Default
-		logger.SetAdditionalStackDepth(1)
-		return nil
+		return InitLogDefault()
 	}
 	var err error
 	if strings.HasPrefix(fileName, "/") {
