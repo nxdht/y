@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	httpDefaultReadTimeout  = 30 * time.Second
-	httpDefaultWriteTimeout = 30 * time.Second
+	httpDefaultReadTimeout  = 30
+	httpDefaultWriteTimeout = 30
 )
 
 type HttpServer struct {
@@ -31,8 +31,8 @@ type HttpServer struct {
 
 type HttpServerConfig struct {
 	ListenPort   int
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	ReadTimeout  int
+	WriteTimeout int
 	CaFile       string
 	CertFile     string
 	KeyFile      string
@@ -61,8 +61,8 @@ func NewHttpServer(ctx context.Context, config *HttpServerConfig) (server *HttpS
 	hs := &http.Server{
 		Addr:         fmt.Sprintf(":%d", config.ListenPort),
 		Handler:      http.NewServeMux(),
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
+		ReadTimeout:  time.Duration(readTimeout) * time.Second,
+		WriteTimeout: time.Duration(writeTimeout) * time.Second,
 	}
 
 	server = &HttpServer{
