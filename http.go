@@ -1,6 +1,7 @@
 package y
 
 import (
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -10,6 +11,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -218,4 +220,81 @@ func HttpClientIP(r *http.Request) string {
 	}
 
 	return ""
+}
+
+func Post(url string, form url.Values, headers map[string]string) ([]byte, http.Header, error) {
+	req, err := http.NewRequest("POST", url, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	}
+
+	client := &http.Client{
+		Timeout: time.Second * 3,
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	defer resp.Body.Close()
+
+	ce := resp.Header.Get("Content-Encoding")
+	if ce == "gzip" {
+		reader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		body, err := ioutil.ReadAll(reader)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return body, resp.Header, nil
+	} else {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return body, resp.Header, nil
+	}
+}
+
+func PostJson(url string, form url.Values, headers map[string]string) (map[string]interface{}, http.Header, error) {
+	d, h, err := Post(url, form, headers)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var v map[string]interface{}
+	err = json.Unmarshal(d, &v)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return v, h, nil
+}
+
+func PostJSONArray(url string, form url.Values, headers map[string]string) ([]interface{}, http.Header, error) {
+	d, h, err := Post(url, form, headers)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var v []interface{}
+	err = json.Unmarshal(d, &v)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return v, h, nil
 }
