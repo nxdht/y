@@ -30,6 +30,8 @@ func NewFileWatcher(f func(fileName string, mode string)) (fileWatcher *FileWatc
 					f(event.Name, "rename")
 				} else if event.Op&fsnotify.Remove == fsnotify.Remove {
 					f(event.Name, "remove")
+				} else if event.Op&fsnotify.Chmod == fsnotify.Chmod {
+					f(event.Name, "chmod")
 				}
 
 			case err, ok := <-watcher.Errors:
