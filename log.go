@@ -23,11 +23,7 @@ func InitLog(fileName string) error {
 		return InitLogDefault()
 	}
 	var err error
-	if strings.HasPrefix(fileName, "/") {
-		logger, err = seelog.LoggerFromConfigAsFile(fileName)
-	} else {
-		logger, err = seelog.LoggerFromConfigAsFile(fmt.Sprintf("config/%s.xml", fileName))
-	}
+	logger, err = seelog.LoggerFromConfigAsFile(fileName)
 	if err != nil {
 		return err
 	}
@@ -51,6 +47,36 @@ func InitLogDefault() error {
 	<outputs formatid="main">
 		<rollingfile type="size" filename="%s" maxsize="1000000" maxrolls="100"/>
 		<console />
+	</outputs>
+	<formats>
+        <format id="main" format="[%%Date(2006-01-02 15:04:05.000)][%%Level][%%File:%%Line] %%Msg%%n"/>
+    </formats>
+</seelog>
+`, fmt.Sprintf("log%s%s_all.log", string(os.PathSeparator), name))
+
+	var err error
+	logger, err = seelog.LoggerFromConfigAsString(content)
+	if err != nil {
+		return err
+	}
+
+	logger.SetAdditionalStackDepth(1)
+
+	return nil
+}
+
+func InitLogDefaultWithConsole() error {
+	index := strings.LastIndex(os.Args[0], string(os.PathSeparator))
+	if index == -1 {
+		return fmt.Errorf("InitLogDefault can't find os.PathSeparator in path: %s", os.Args[0])
+	}
+
+	name := os.Args[0][index+1:]
+
+	content := fmt.Sprintf(`
+<seelog type="asyncloop">
+	<outputs formatid="main">
+		<rollingfile type="size" filename="%s" maxsize="1000000" maxrolls="100"/>
 	</outputs>
 	<formats>
         <format id="main" format="[%%Date(2006-01-02 15:04:05.000)][%%Level][%%File:%%Line] %%Msg%%n"/>
