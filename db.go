@@ -26,7 +26,7 @@ type DBConfig struct {
 	EnableLog   bool
 	MaxIdle     int
 	MaxOpen     int
-	MaxConnLife time.Duration
+	MaxConnLife int
 }
 
 func NewDB(config *DBConfig) (db *DB, err error) {
@@ -52,7 +52,7 @@ func NewDB(config *DBConfig) (db *DB, err error) {
 	d.LogMode(config.EnableLog)
 	d.DB().SetMaxIdleConns(config.MaxIdle)
 	d.DB().SetMaxOpenConns(config.MaxOpen)
-	d.DB().SetConnMaxLifetime(config.MaxConnLife)
+	d.DB().SetConnMaxLifetime(time.Second * time.Duration(config.MaxConnLife))
 
 	db = &DB{
 		DB: d,
